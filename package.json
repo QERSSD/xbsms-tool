@@ -1,0 +1,12 @@
+{
+  "name": "xbsms-tool",
+  "version": "1.0.0",
+  "description": "短信验证工具 - 前端 H5 + Node 后端代理",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

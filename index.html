@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1677ff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>短信验证工具</title>
+<style>
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #f0f2f5;
+    color: #1a1a1a;
+    line-height: 1.6;
+    margin: 0; padding: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: #fff; border-bottom: 1px solid #eee;
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar .title { font-size: 17px; font-weight: 700; }
+  .topbar .title small { display:block; font-size:11px; color:#999; font-weight:400; }
+  .gear-btn {
+    width: 38px; height: 38px;
+    border: 1px solid #e0e0e0; background: #fafafa;
+    border-radius: 10px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #666; font-size: 16px; transition: all .15s;
+  }
+  .gear-btn:active { background: #e8e8e8; transform: scale(.94); }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+
+  .flow-card {
+    background: #fff; border-radius: 16px;
+    padding: 24px 20px; margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04); border: 1px solid #eee;
+    text-align: center;
+  }
+
+  .step-label { font-size: 12px; color: #999; margin-bottom: 6px; letter-spacing: .5px; }
+
+  .big-btn {
+    width: 100%; border: none; border-radius: 14px;
+    padding: 18px 20px; font-size: 17px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; transition: all .15s; margin-bottom: 14px;
+  }
+  .big-btn:active { transform: scale(.97); }
+  .big-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .big-btn .icon {
+    width: 32px; height: 32px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .btn-get  .icon { background: #e6f1ff; color: #1677ff; }
+  .btn-get  { background: #e6f1ff; color: #1677ff; }
+  .btn-get:not(:disabled):hover { background: #d6e8ff; }
+  .btn-msg  .icon { background: #fff3e0; color: #fa8c16; }
+  .btn-msg  { background: #fff3e0; color: #c46a0a; }
+  .btn-msg:not(:disabled):hover { background: #ffe8c4; }
+  .btn-release .icon { background: #fff1f0; color: #ff4d4f; }
+  .btn-release { background: #fff1f0; color: #cf1322; }
+  .btn-block  .icon { background: #f5f0ff; color: #722ed1; }
+  .btn-block  { background: #f5f0ff; color: #531dab; }
+
+  .phone-show {
+    background: linear-gradient(135deg, #e6f1ff, #f0f7ff);
+    border: 1px solid #d6e8ff; border-radius: 12px;
+    padding: 20px; margin-bottom: 14px;
+  }
+  .phone-show .lbl { font-size: 12px; color: #999; margin-bottom: 8px; }
+  .phone-show .num {
+    font-size: 32px; font-weight: 700; color: #1677ff;
+    font-family: "SF Mono", "Menlo", "Consolas", monospace; letter-spacing: 2px;
+  }
+  .phone-show .meta { font-size: 12px; color: #bbb; margin-top: 8px; }
+
+  .sms-show {
+    background: #1e1e1e; color: #d4d4d4; border-radius: 12px;
+    padding: 18px; font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-size: 15px; line-height: 1.9; min-height: 100px;
+    white-space: pre-wrap; word-break: break-all; margin-bottom: 14px;
+  }
+  .sms-show .ok { color: #52c41a; }
+  .sms-show .err { color: #ff4d4f; }
+  .sms-show .info { color: #888; }
+
+  .poll-section { margin-bottom: 14px; }
+  .poll-info { font-size: 12px; color: #999; display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .poll-bar { height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+  .poll-bar > div { height: 100%; width: 0%; background: linear-gradient(90deg,#1677ff,#4096ff); transition: width .3s; }
+
+  .action-row { display: flex; gap: 10px; }
+  .action-row .big-btn { margin-bottom: 0; }
+
+  .status-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: #666; margin-bottom: 16px;
+  }
+  .status-dot .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+  .status-dot.ok .dot { background: #52c41a; }
+  .status-dot.err .dot { background: #ff4d4f; }
+  .status-dot.wait .dot { background: #faad14; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* 设置面板 */
+  .sheet-mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200;
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .sheet-mask.show { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff; border-radius: 20px 20px 0 0; z-index: 210;
+    transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
+    max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .sheet.show { transform: translateY(0); }
+  .sheet-header {
+    padding: 16px 20px 12px; border-bottom: 1px solid #eee;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .sheet-header h3 { font-size: 17px; font-weight: 700; margin: 0; }
+  .sheet-close {
+    border: none; background: #f0f0f0; width: 32px; height: 32px;
+    border-radius: 50%; cursor: pointer; color: #666; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sheet-body { padding: 16px 20px 30px; }
+  .sheet-body label {
+    font-size: 13px; font-weight: 600; color: #555;
+    display: block; margin-bottom: 6px; margin-top: 14px;
+  }
+  .sheet-body label:first-child { margin-top: 0; }
+  .sheet-body input, .sheet-body select {
+    width: 100%; border: 1.5px solid #e0e0e0; border-radius: 10px;
+    padding: 11px 14px; font-size: 15px; font-family: inherit;
+    background: #fafafa; outline: none; transition: border-color .2s, background .2s;
+  }
+  .sheet-body input:focus, .sheet-body select:focus { border-color: #1677ff; background: #fff; }
+  .sheet-save {
+    margin-top: 20px; width: 100%; border: none; border-radius: 12px;
+    padding: 14px; font-size: 16px; font-weight: 700;
+    background: #1677ff; color: #fff; cursor: pointer; font-family: inherit;
+  }
+  .sheet-save:active { background: #1266e6; transform: scale(.98); }
+
+  .log-card {
+    background: #fff; border-radius: 14px; padding: 14px 16px;
+    border: 1px solid #eee; box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  }
+  .log-head {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; font-size: 14px; font-weight: 600;
+  }
+  .log-box {
+    background: #1e1e1e; color: #d4d4d4; border-radius: 10px;
+    padding: 14px 16px; font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-size: 12px; line-height: 1.8; max-height: 240px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-all; margin-top: 10px;
+  }
+  .log-box .ts { color: #888; }
+  .log-box .req { color: #569cd6; }
+  .log-box .resp { color: #4ec9b0; }
+  .log-box .err { color: #f48771; }
+  .log-box .ok { color: #52c41a; }
+
+  .toast {
+    position: fixed; bottom: 80px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0,0,0,.8); color: #fff;
+    padding: 10px 22px; border-radius: 20px; font-size: 13px;
+    opacity: 0; transition: all .25s; z-index: 999; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .hidden { display: none !important; }
+
+  @media (min-width: 768px) {
+    .container { padding: 24px; max-width: 760px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="title">短信验证工具<small>xbsms.work · 国内通道</small></div>
+  <button class="gear-btn" id="btnSettings" title="设置">
+    <i class="fa fa-cog"></i>
+  </button>
+</div>
+
+<div class="container">
+
+  <div class="flow-card">
+
+    <div class="status-dot wait" id="statusDot">
+      <span class="dot"></span>
+      <span id="statusText">就绪 · 请先在设置中配置 API</span>
+    </div>
+
+    <div class="step-label">步骤 1 · 获取手机号</div>
+    <button class="big-btn btn-get" id="btnGetPhone" disabled>
+      <span class="icon"><i class="fa fa-mobile"></i></span>
+      获取手机号
+    </button>
+
+    <div id="phoneWrap" class="hidden">
+      <div class="phone-show">
+        <div class="lbl">已获取号码</div>
+        <div class="num" id="phoneNum">--</div>
+        <div class="meta" id="phoneMeta">--</div>
+      </div>
+    </div>
+
+    <div id="msgSection" class="hidden">
+      <div class="step-label">步骤 2 · 获取短信</div>
+      <div class="poll-section">
+        <div class="poll-info"><span>轮询进度</span><span id="pollCount">0 / 20</span></div>
+        <div class="poll-bar"><div id="pollProgress"></div></div>
+      </div>
+      <button class="big-btn btn-msg" id="btnGetMsg" disabled>
+        <span class="icon"><i class="fa fa-envelope"></i></span>
+        开始轮询短信
+      </button>
+      <button class="big-btn btn-get" id="btnStopPoll" style="display:none;">
+        <span class="icon"><i class="fa fa-stop"></i></span>
+        停止轮询
+      </button>
+      <div class="sms-show" id="smsBox"><span class="info">等待短信内容...</span></div>
+    </div>
+
+    <div id="manageSection" class="hidden">
+      <div class="step-label">步骤 3 · 号码管理</div>
+      <div class="action-row">
+        <button class="big-btn btn-release" id="btnRelease">
+          <span class="icon"><i class="fa fa-trash"></i></span>
+          释放号码
+        </button>
+        <button class="big-btn btn-block" id="btnBlock">
+          <span class="icon"><i class="fa fa-ban"></i></span>
+          拉黑号码
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="log-card">
+    <div class="log-head">
+      <span><i class="fa fa-terminal" style="color:#1677ff;margin-right:6px;"></i>请求日志</span>
+      <span style="font-size:12px;color:#999;cursor:pointer;" id="btnClearLog">清空</span>
+    </div>
+    <div class="log-box" id="logBox"><span class="info">// 等待操作...</span></div>
+  </div>
+
+</div>
+
+<div class="sheet-mask" id="sheetMask"></div>
+<div class="sheet" id="settingsSheet">
+  <div class="sheet-header">
+    <h3><i class="fa fa-cog" style="margin-right:6px;"></i>后台配置</h3>
+    <button class="sheet-close" id="btnSheetClose"><i class="fa fa-times"></i></button>
+  </div>
+  <div class="sheet-body">
+    <label for="cfgToken">API 密钥 Token</label>
+    <input type="text" id="cfgToken" placeholder="sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+
+    <label for="cfgKeyWord">关键词</label>
+    <input type="text" id="cfgKeyWord" placeholder="如：抖音" value="抖音">
+
+    <label for="cfgProvince">省份</label>
+    <select id="cfgProvince">
+      <option value="全部">全部</option>
+      <option>北京</option><option>天津</option><option>上海</option><option>重庆</option>
+      <option>河北</option><option>山西</option><option>辽宁</option><option>吉林</option>
+      <option>黑龙江</option><option>江苏</option><option>浙江</option><option>安徽</option>
+      <option>福建</option><option>江西</option><option>山东</option><option>河南</option>
+      <option>湖北</option><option>湖南</option><option>广东</option><option>海南</option>
+      <option>四川</option><option>贵州</option><option>云南</option><option>陕西</option>
+      <option>甘肃</option><option>青海</option><option>内蒙古</option><option>广西</option>
+      <option>西藏</option><option>宁夏</option><option>新疆</option>
+    </select>
+
+    <label for="cfgCardType">卡类型</label>
+    <select id="cfgCardType">
+      <option value="全部">全部</option>
+      <option value="实卡">实卡</option>
+      <option value="虚卡">虚卡</option>
+    </select>
+
+    <label for="cfgPhone">指定号码（可选）</label>
+    <input type="text" id="cfgPhone" placeholder="留空则随机分配">
+
+    <button class="sheet-save" id="btnSaveConfig">
+      <i class="fa fa-save"></i> 保存配置
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast">已保存</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 后端地址：同源，相对路径自动适配
+  const API = {
+    getPhone:  '/api/getPhone',
+    getMsg:    '/api/getMsg',
+    release:   '/api/release',
+    block:     '/api/block',
+  };
+
+  const $ = id => document.getElementById(id);
+  let config = { token: '', keyWord: '抖音', province: '全部', cardType: '全部', phone: '' };
+
+  try{
+    const saved = localStorage.getItem('xbsms_config');
+    if(saved) config = Object.assign(config, JSON.parse(saved));
+  }catch(e){}
+
+  let currentPhone = null;
+  let pollTimer = null, pollCount = 0, pollMax = 20, polling = false;
+
+  // Toast
+  let toastTimer = null;
+  function toast(msg){
+    $('toast').textContent = msg;
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>$('toast').classList.remove('show'), 1800);
+  }
+
+  // 日志
+  function log(type, msg){
+    const box = $('logBox');
+    const span = document.createElement('span');
+    const ts = new Date().toLocaleTimeString('zh-CN', {hour12:false});
+    const colors = { ts:'#888', req:'#569cd6', resp:'#4ec9b0', err:'#f48771', ok:'#52c41a', info:'#888' };
+    span.className = type;
+    span.style.color = colors[type] || '#d4d4d4';
+    span.textContent = `[${ts}] ${msg}`;
+    box.appendChild(span);
+    box.scrollTop = box.scrollHeight;
+  }
+  function clearLog(){ $('logBox').innerHTML = '<span class="info">// 日志已清空</span>'; }
+
+  function setStatus(text, state){
+    const dot = $('statusDot');
+    dot.classList.remove('ok','err','wait');
+    dot.classList.add(state || 'wait');
+    $('statusText').textContent = text;
+  }
+
+  function saveConfig(){
+    try{ localStorage.setItem('xbsms_config', JSON.stringify(config)); }catch(e){}
+    $('cfgToken').value = config.token;
+    $('cfgKeyWord').value = config.keyWord;
+    $('cfgProvince').value = config.province;
+    $('cfgCardType').value = config.cardType;
+    cfgPhone.value = config.phone || '';
+    updateFrontendState();
+  }
+
+  function updateFrontendState(){
+    if(config.token && config.token.startsWith('sk_live_')){
+      $('btnGetPhone').disabled = false;
+      setStatus('配置已就绪，点击获取手机号', 'ok');
+    }else{
+      $('btnGetPhone').disabled = true;
+      setStatus('就绪 · 请先在设置中配置 API', 'wait');
+    }
+  }
+
+  // ====== 通用请求（调后端） ======
+  async function apiCall(endpoint, body){
+    const label = endpoint.replace('/api/', '');
+    log('req', `POST ${endpoint} ${JSON.stringify(body)}`);
+
+    try{
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await resp.json();
+      if(json.ok){
+        log('resp', `${label} → ${json.data}`);
+      }else{
+        log('err', `${label} 失败: ${json.error}`);
+      }
+      return json;
+    }catch(err){
+      log('err', `${label} 网络错误: ${err.message}`);
+      return { ok: false, error: err.message };
+    }
+  }
+
+  // ====== 设置面板 ======
+  function openSheet(){
+    $('cfgToken').value = config.token;
+    $('cfgKeyWord').value = config.keyWord;
+    $('cfgProvince').value = config.province;
+    $('cfgCardType').value = config.cardType;
+    $('cfgPhone').value = config.phone || '';
+    $('settingsSheet').classList.add('show');
+    $('sheetMask').classList.add('show');
+  }
+  function closeSheet(){
+    $('settingsSheet').classList.remove('show');
+    $('sheetMask').classList.remove('show');
+  }
+  $('btnSettings').addEventListener('click', openSheet);
+  $('btnSheetClose').addEventListener('click', closeSheet);
+  $('sheetMask').addEventListener('click', closeSheet);
+
+  $('btnSaveConfig').addEventListener('click', ()=>{
+    config.token = $('cfgToken').value.trim();
+    config.keyWord = $('cfgKeyWord').value.trim();
+    config.province = $('cfgProvince').value;
+    config.cardType = $('cfgCardType').value;
+    config.phone = $('cfgPhone').value.trim();
+
+    if(!config.token){ toast('请填写 API 密钥'); return; }
+    if(!config.token.startsWith('sk_live_')){ toast('密钥应以 sk_live_ 开头'); return; }
+    if(!config.keyWord){ toast('请填写关键词'); return; }
+
+    saveConfig();
+    toast('配置已保存');
+    closeSheet();
+  });
+
+  // ====== 获取手机号 ======
+  $('btnGetPhone').addEventListener('click', async ()=>{
+    if(!config.token){ toast('请先配置 API'); openSheet(); return; }
+
+    setStatus('正在获取号码...', 'wait');
+    $('btnGetPhone').disabled = true;
+
+    const body = {
+      token: config.token, keyWord: config.keyWord,
+      province: config.province, cardType: config.cardType,
+    };
+    if(config.phone) body.phone = config.phone;
+
+    const json = await apiCall(API.getPhone, body);
+
+    if(json.ok){
+      currentPhone = json.data;
+      $('phoneNum').textContent = currentPhone;
+      $('phoneMeta').textContent = `关键词: ${config.keyWord} · ${new Date().toLocaleTimeString('zh-CN', {hour12:false})}`;
+      $('phoneWrap').classList.remove('hidden');
+      $('msgSection').classList.remove('hidden');
+      $('manageSection').classList.remove('hidden');
+      $('btnGetMsg').disabled = false;
+      setStatus('号码获取成功', 'ok');
+      toast('号码获取成功');
+    }else{
+      setStatus('获取失败: ' + json.error, 'err');
+      toast('获取失败');
+    }
+    $('btnGetPhone').disabled = false;
+  });
+
+  // ====== 轮询短信 ======
+  $('btnGetMsg').addEventListener('click', ()=>{
+    if(polling) return;
+    if(!currentPhone){ toast('请先获取号码'); return; }
+
+    polling = true;
+    pollCount = 0;
+    $('btnGetMsg').style.display = 'none';
+    $('btnStopPoll').style.display = 'flex';
+    $('smsBox').innerHTML = '<span class="info">开始轮询，每 1.5 秒查询一次...</span>';
+
+    pollTimer = setInterval(async ()=>{
+      pollCount++;
+      const progress = Math.min((pollCount / pollMax) * 100, 100);
+      $('pollProgress').style.width = progress + '%';
+      $('pollCount').textContent = `${pollCount} / ${pollMax}`;
+
+      const json = await apiCall(API.getMsg, {
+        token: config.token, phone: currentPhone, keyWord: config.keyWord
+      });
+
+      if(json.ok){
+        $('smsBox').innerHTML = `<span class="ok">[${pollCount}] 收到短信：\n${json.data}</span>`;
+        stopPoll();
+        setStatus('短信获取成功', 'ok');
+        toast('短信获取成功');
+      }else{
+        if(json.error && json.error.includes('未收到短信')){
+          $('smsBox').innerHTML = `<span class="info">[${pollCount}] 未收到短信，继续轮询...</span>`;
+        }else{
+          $('smsBox').innerHTML = `<span class="err">[${pollCount}] ${json.error}</span>`;
+          stopPoll();
+          setStatus('轮询异常: ' + json.error, 'err');
+        }
+      }
+
+      if(pollCount >= pollMax){
+        $('smsBox').innerHTML = `<span class="info">已轮询 ${pollMax} 次，未收到短信</span>`;
+        stopPoll();
+        setStatus('轮询超时', 'err');
+      }
+    }, 1500);
+  });
+
+  function stopPoll(){
+    polling = false;
+    clearInterval(pollTimer);
+    pollTimer = null;
+    $('btnGetMsg').style.display = 'flex';
+    $('btnStopPoll').style.display = 'none';
+  }
+
+  $('btnStopPoll').addEventListener('click', ()=>{
+    stopPoll();
+    setStatus('已停止轮询', 'wait');
+    toast('已停止轮询');
+  });
+
+  // ====== 释放 / 拉黑 ======
+  async function phoneAction(endpoint, label){
+    if(!currentPhone){ toast('没有可操作的号码'); return; }
+    if(!config.token){ toast('请先配置 API'); openSheet(); return; }
+
+    setStatus(`${label}中...`, 'wait');
+    const json = await apiCall(endpoint, { token: config.token, phone: currentPhone });
+
+    if(json.ok){
+      setStatus(`${label}成功`, 'ok');
+      toast(`${label}成功`);
+      if(endpoint === API.release){
+        currentPhone = null;
+        $('phoneWrap').classList.add('hidden');
+        $('msgSection').classList.add('hidden');
+        $('manageSection').classList.add('hidden');
+        setStatus('号码已释放', 'ok');
+      }
+    }else{
+      setStatus(`${label}失败: ${json.error}`, 'err');
+      toast('操作失败');
+    }
+  }
+
+  $('btnRelease').addEventListener('click', ()=> phoneAction(API.release, '释放号码'));
+  $('btnBlock').addEventListener('click', ()=> phoneAction(API.block, '拉黑号码'));
+
+  $('btnClearLog').addEventListener('click', clearLog);
+
+  // 初始化
+  saveConfig();
+  log('info', '前端已加载，等待后端响应 (localhost:3000)');
+})();
+</script>
+</body>
+</html>
